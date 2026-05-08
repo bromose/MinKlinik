@@ -1,6 +1,7 @@
 using MinKlinik.Domain.Entities;
 using MinKlinik.Domain.Enums;
 using MinKlinik.Domain.Exceptions;
+using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 using FixtureBuilder;
 using Xunit;
@@ -10,74 +11,80 @@ namespace MinKlinik.Domain.Tests;
 public class TidsintervalTests
 {
     [Fact]
-    public void Constructor_MedTilFørFra_KasterDomainException()
+    public void GivenTilFoerFra_WhenCreatingInterval_ThenThrowsDomainException()
     {
         Assert.Throws<DomainException>(() =>
             new Tidsinterval(DateTime.UtcNow.AddHours(2), DateTime.UtcNow.AddHours(1)));
     }
 
     [Fact]
-    public void OverlapperMed_OverlappendeIntervaller_ReturnererTrue()
+    public void GivenOverlappingIntervals_WhenCheckingOverlap_ThenReturnsTrue()
     {
-        var a = new Tidsinterval(Dag(9), Dag(10));
-        var b = new Tidsinterval(Dag(9, 30), Dag(10, 30));
-        Assert.True(a.OverlapperMed(b));
-        Assert.True(b.OverlapperMed(a));
+        var førsteInterval = new Tidsinterval(DayAt(9), DayAt(10));
+        var andetInterval = new Tidsinterval(DayAt(9, 30), DayAt(10, 30));
+        Assert.True(førsteInterval.OverlapperMed(andetInterval));
+        Assert.True(andetInterval.OverlapperMed(førsteInterval));
     }
 
     [Fact]
-    public void OverlapperMed_TilstødendeIntervaller_ReturnererFalse()
+    public void GivenAdjacentIntervals_WhenCheckingOverlap_ThenReturnsFalse()
     {
-        var a = new Tidsinterval(Dag(9), Dag(10));
-        var b = new Tidsinterval(Dag(10), Dag(11));
-        Assert.False(a.OverlapperMed(b));
+        var førsteInterval = new Tidsinterval(DayAt(9), DayAt(10));
+        var andetInterval = new Tidsinterval(DayAt(10), DayAt(11));
+        Assert.False(førsteInterval.OverlapperMed(andetInterval));
     }
 
     [Fact]
-    public void Varighed_BeregnesKorrekt()
+    public void GivenValidInterval_WhenReadingDuration_ThenReturnsExpectedTimespan()
     {
-        var t = new Tidsinterval(Dag(9), Dag(10, 30));
-        Assert.Equal(TimeSpan.FromMinutes(90), t.Varighed);
+        var interval = new Tidsinterval(DayAt(9), DayAt(10, 30));
+        Assert.Equal(TimeSpan.FromMinutes(90), interval.Varighed);
     }
 
-    private DateTime Dag(int time, int min = 0)
+    private DateTime DayAt(int time, int min = 0)
         => DateTime.UtcNow.AddDays(1).Date.AddHours(time).AddMinutes(min);
 }
 
 public class KonsultationTests
 {
-    private readonly Guid TypeId = Guid.NewGuid();
-    private readonly Guid PatientId = Guid.NewGuid();
-    private readonly Guid BehandlerId = Guid.NewGuid();
+    private readonly Guid _behandlerId = Guid.NewGuid();
+    private readonly IEgenBetalingsBeregner _egenbetalingsBeregner = new StubEgenBetalingsBeregner();
 
-    private Tidsinterval Tid(int fraTime, int tilTime)
+    private Tidsinterval TimeRange(int fraTime, int tilTime)
         => new(DateTime.UtcNow.AddDays(1).Date.AddHours(fraTime),
                DateTime.UtcNow.AddDays(1).Date.AddHours(tilTime));
 
-    private Konsultation OpretUdenOverlap(
+    private static Behandlingstype NewTreatmentType()
+        => new("Undersøgelse", new EgenbetalingsBeløb(350));
+
+    private static Patient NewPatient()
+        => new("Jens Jensen", "010190-1234");
+
+    private Konsultation CreateWithoutOverlap(
         Tidsinterval? tidspunkt = null,
-        Guid? patientId = null,
+        Patient? patient = null,
         Guid? behandlerId = null)
     {
         return Konsultation.Opret(
-            tidspunkt ?? Tid(9, 10),
-            TypeId,
-            patientId ?? PatientId,
-            behandlerId ?? BehandlerId,
+            tidspunkt ?? TimeRange(9, 10),
+            NewTreatmentType(),
+            patient ?? NewPatient(),
+            behandlerId ?? _behandlerId,
             eksisterendeForPatient: Array.Empty<Konsultation>(),
-            eksisterendeForBehandler: Array.Empty<Konsultation>());
+            eksisterendeForBehandler: Array.Empty<Konsultation>(),
+            egenbetalingsBeregner: _egenbetalingsBeregner);
     }
 
     [Fact]
-    public void Aflys_NårStatusErPlanlagt_SætterStatusTilAflyst()
+    public void GivenPlannedConsultation_WhenCancelled_ThenStatusIsCancelled()
     {
-        var k = OpretUdenOverlap();
-        k.Aflys();
-        Assert.Equal(KonsultationStatus.Aflyst, k.Status);
+        var konsultation = CreateWithoutOverlap();
+        konsultation.Aflys();
+        Assert.Equal(KonsultationStatus.Aflyst, konsultation.Status);
     }
 
     [Fact]
-    public void Aflys_NårStatusErAfsluttet_KasterDomainException()
+    public void GivenCompletedConsultation_WhenCancelled_ThenThrowsDomainException()
     {
         var afsluttet = new FixtureFactory()
             .New<Konsultation>()
@@ -97,139 +104,145 @@ public class KonsultationTests
     }
 
     [Fact]
-    public void Opret_MedGyldigeData_SætterStatusTilPlanlagt()
+    public void GivenValidInput_WhenCreatingConsultation_ThenStatusIsPlanned()
     {
-        var k = OpretUdenOverlap();
-        Assert.Equal(KonsultationStatus.Planlagt, k.Status);
+        var konsultation = CreateWithoutOverlap();
+        Assert.Equal(KonsultationStatus.Planlagt, konsultation.Status);
     }
 
     [Fact]
-    public void Opret_MedTidspunktIFortiden_KasterDomainException()
+    public void GivenPastTime_WhenCreatingConsultation_ThenThrowsDomainException()
     {
         var fortid = new Tidsinterval(DateTime.UtcNow.AddDays(-2), DateTime.UtcNow.AddDays(-1));
         Assert.Throws<DomainException>(() =>
-            Konsultation.Opret(fortid, TypeId, PatientId, BehandlerId,
-                Array.Empty<Konsultation>(), Array.Empty<Konsultation>()));
+            Konsultation.Opret(fortid, NewTreatmentType(), NewPatient(), _behandlerId,
+                Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner));
     }
 
     [Fact]
-    public void Opret_MedPatientOverlap_KasterDomainException()
+    public void GivenPatientOverlap_WhenCreatingConsultation_ThenThrowsDomainException()
     {
-        var patientId = Guid.NewGuid();
+        var patient = NewPatient();
         var eksisterende = Konsultation.Opret(
-            Tid(9, 10), TypeId, patientId, BehandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
+            TimeRange(9, 10), NewTreatmentType(), patient, _behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
 
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
-                Tid(9, 11), TypeId, patientId, Guid.NewGuid(),
+                TimeRange(9, 11), NewTreatmentType(), patient, Guid.NewGuid(),
                 eksisterendeForPatient: new[] { eksisterende },
-                eksisterendeForBehandler: Array.Empty<Konsultation>()));
+                eksisterendeForBehandler: Array.Empty<Konsultation>(),
+                egenbetalingsBeregner: _egenbetalingsBeregner));
     }
 
     [Fact]
-    public void Opret_MedBehandlerOverlap_KasterDomainException()
+    public void GivenPractitionerOverlap_WhenCreatingConsultation_ThenThrowsDomainException()
     {
         var behandlerId = Guid.NewGuid();
+        var patient = NewPatient();
         var eksisterende = Konsultation.Opret(
-            Tid(9, 10), TypeId, PatientId, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
+            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
 
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
-                Tid(9, 11), TypeId, Guid.NewGuid(), behandlerId,
+                TimeRange(9, 11), NewTreatmentType(), NewPatient(), behandlerId,
                 eksisterendeForPatient: Array.Empty<Konsultation>(),
-                eksisterendeForBehandler: new[] { eksisterende }));
+                eksisterendeForBehandler: new[] { eksisterende },
+                egenbetalingsBeregner: _egenbetalingsBeregner));
     }
 
     [Fact]
-    public void Opret_UdenOverlap_Lykkes()
+    public void GivenNoOverlap_WhenCreatingConsultation_ThenSucceeds()
     {
-        var patientId = Guid.NewGuid();
+        var patient = NewPatient();
         var behandlerId = Guid.NewGuid();
         var eksisterende = Konsultation.Opret(
-            Tid(9, 10), TypeId, patientId, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
+            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
 
-        var ny = Konsultation.Opret(
-            Tid(10, 11), TypeId, patientId, behandlerId,
+        var nyKonsultation = Konsultation.Opret(
+            TimeRange(10, 11), NewTreatmentType(), patient, behandlerId,
             eksisterendeForPatient: new[] { eksisterende },
-            eksisterendeForBehandler: new[] { eksisterende });
-        Assert.NotNull(ny);
+            eksisterendeForBehandler: new[] { eksisterende },
+            egenbetalingsBeregner: _egenbetalingsBeregner);
+        Assert.NotNull(nyKonsultation);
     }
 
     [Fact]
-    public void Opret_AflystBookingBlokererIkke()
+    public void GivenCancelledExistingBooking_WhenCreatingConsultation_ThenSucceeds()
     {
-        var patientId = Guid.NewGuid();
+        var patient = NewPatient();
         var behandlerId = Guid.NewGuid();
         var aflyst = Konsultation.Opret(
-            Tid(9, 10), TypeId, patientId, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
+            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
         aflyst.Aflys();
 
-        var ny = Konsultation.Opret(
-            Tid(9, 10), TypeId, patientId, behandlerId,
+        var nyKonsultation = Konsultation.Opret(
+            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
             eksisterendeForPatient: new[] { aflyst },
-            eksisterendeForBehandler: new[] { aflyst });
-        Assert.NotNull(ny);
+            eksisterendeForBehandler: new[] { aflyst },
+            egenbetalingsBeregner: _egenbetalingsBeregner);
+        Assert.NotNull(nyKonsultation);
     }
 
     [Fact]
-    public void OpdaterBehandlingstype_PaaAfsluttet_KasterDomainException()
+    public void GivenCompletedConsultation_WhenUpdatingTreatmentType_ThenThrowsDomainException()
     {
-        var k = OpretUdenOverlap();
-        k.Afslut("Test-notat");
-        Assert.Throws<DomainException>(() => k.OpdaterBehandlingstype(Guid.NewGuid()));
+        var konsultation = CreateWithoutOverlap();
+        konsultation.Afslut("Test-notat");
+        Assert.Throws<DomainException>(() => konsultation.OpdaterBehandlingstype(Guid.NewGuid()));
     }
 
     [Fact]
-    public void Afslut_MedTomNotat_KasterDomainException()
+    public void GivenEmptyNote_WhenCompletingConsultation_ThenThrowsDomainException()
     {
-        var k = OpretUdenOverlap();
-        Assert.Throws<DomainException>(() => k.Afslut(""));
+        var konsultation = CreateWithoutOverlap();
+        Assert.Throws<DomainException>(() => konsultation.Afslut(""));
     }
 
     [Fact]
-    public void Afslut_SætterStatusTilAfsluttet()
+    public void GivenPlannedConsultation_WhenCompletedWithNote_ThenStatusIsCompleted()
     {
-        var k = OpretUdenOverlap();
-        k.Afslut("Alt gik godt");
-        Assert.Equal(KonsultationStatus.Afsluttet, k.Status);
-        Assert.Equal("Alt gik godt", k.Notat);
+        var konsultation = CreateWithoutOverlap();
+        konsultation.Afslut("Alt gik godt");
+        Assert.Equal(KonsultationStatus.Afsluttet, konsultation.Status);
+        Assert.Equal("Alt gik godt", konsultation.Notat);
     }
 
     [Fact]
-    public void Aflys_SætterStatusTilAflyst()
+    public void GivenCancelledConsultation_WhenCheckingIsActive_ThenReturnsFalse()
     {
-        var k = OpretUdenOverlap();
-        k.Aflys();
-        Assert.Equal(KonsultationStatus.Aflyst, k.Status);
-    }
-
-    [Fact]
-    public void ErAktiv_AflystKonsultation_ReturnererFalse()
-    {
-        var k = OpretUdenOverlap();
-        k.Aflys();
-        Assert.False(k.ErAktiv);
+        var konsultation = CreateWithoutOverlap();
+        konsultation.Aflys();
+        Assert.False(konsultation.ErAktiv);
     }
 }
 
 public class KonsultationOpretTests
 {
+    private static readonly IEgenBetalingsBeregner EgenbetalingsBeregner = new StubEgenBetalingsBeregner();
+
     [Fact]
-    public void Opret_NårPatientIdErEmpty_KasterDomainException()
+    public void GivenEmptyPractitionerId_WhenCreatingConsultation_ThenThrowsDomainException()
     {
         var tidspunkt = new Tidsinterval(DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1));
 
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
                 tidspunkt,
-                Guid.NewGuid(),
+                new Behandlingstype("Undersøgelse", new EgenbetalingsBeløb(200)),
+                new Patient("Jens", "010190-1234"),
                 Guid.Empty,
-                Guid.NewGuid(),
                 Array.Empty<Konsultation>(),
-                Array.Empty<Konsultation>()));
+                Array.Empty<Konsultation>(),
+                EgenbetalingsBeregner));
     }
+}
+
+internal sealed class StubEgenBetalingsBeregner : IEgenBetalingsBeregner
+{
+    public EgenbetalingsBeløb BeregnEgenbetalingsBeløb(Tidsinterval tidspunkt, Behandlingstype behandlingstype, Patient patient)
+        => new(behandlingstype.EgenbetalingsBeløb.Beløb);
 }
