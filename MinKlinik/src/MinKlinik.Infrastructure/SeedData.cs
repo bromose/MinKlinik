@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MinKlinik.Domain.Entities;
+using MinKlinik.Domain.ValueObjects;
 using MinKlinik.Infrastructure.Persistence;
 
 namespace MinKlinik.Infrastructure;
@@ -15,9 +16,9 @@ public class SeedData
 
         if (db.Behandlingstyper.Any()) return;
 
-        var undersøgelse = new Behandlingstype("Undersøgelse");
-        var vaccination = new Behandlingstype("Vaccination");
-        var kontrol = new Behandlingstype("Kontrol");
+        var undersøgelse = new Behandlingstype("Undersøgelse", new EgenbetalingsBeløb(0));
+        var vaccination = new Behandlingstype("Vaccination", new EgenbetalingsBeløb(100));
+        var kontrol = new Behandlingstype("Kontrol", new EgenbetalingsBeløb(0));
 
         db.Behandlingstyper.AddRange(undersøgelse, vaccination, kontrol);
 

@@ -1,28 +1,26 @@
 using MinKlinik.Domain.Enums;
 using MinKlinik.Domain.Exceptions;
+using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 
 namespace MinKlinik.Domain.Entities;
 
 /// <summary>
-/// AGGREGATE ROOT: Konsultation
-///
-/// Identificeret som Aggregate Root fordi:
-///   1. Egen livscyklus — oprettes og afsluttes/aflyses uafhængigt
-///   2. Transaktionsgrænse — status, notat og tidspunkt ændres som én enhed
-///   3. Eget repository — IKonsultationRepository
-///   4. Refereres via ID af eventuelle fremtidige aggregater
-///
-/// Ejer: Tidsinterval (Value Object — ingen egen identitet)
-/// Refererer til: Patient, Behandler, Behandlingstype via Guid — IKKE objektreferencer.
-/// Aggregater må ikke navigere direkte til andre aggregater.
-///
-/// Oprettelse sker via factory-metoden Opret(), der håndhæver overlap-regler.
-/// Constructoren er privat — det er umuligt at oprette en ugyldig konsultation.
+///     AGGREGATE ROOT: Konsultation
+///     Identificeret som Aggregate Root fordi:
+///     1. Egen livscyklus — oprettes og afsluttes/aflyses uafhængigt
+///     2. Transaktionsgrænse — status, notat og tidspunkt ændres som én enhed
+///     3. Eget repository — IKonsultationRepository
+///     4. Refereres via ID af eventuelle fremtidige aggregater
+///     Ejer: Tidsinterval (Value Object — ingen egen identitet)
+///     Refererer til: Patient, Behandler, Behandlingstype via Guid — IKKE objektreferencer.
+///     Aggregater må ikke navigere direkte til andre aggregater.
+///     Oprettelse sker via factory-metoden Opret(), der håndhæver overlap-regler.
+///     Constructoren er privat — det er umuligt at oprette en ugyldig konsultation.
 /// </summary>
 public class Konsultation : AggregateRoot
 {
-    public Tidsinterval Tidspunkt { get; private set; } = null!;
+    public Tidsinterval Tidspunkt { get; } = null!;
 
     // Andre Aggregate Roots refereres via ID — IKKE via objektreferencer.
     public Guid BehandlingstypeId { get; private set; }
@@ -31,9 +29,14 @@ public class Konsultation : AggregateRoot
 
     public string Notat { get; private set; } = string.Empty;
     public KonsultationStatus Status { get; private set; }
+    public EgenbetalingsBeløb EgenbetalingsBeløb { get; private set; } = new(0);
+
+    public bool ErAktiv => Status != KonsultationStatus.Aflyst;
 
     // Privat parameterløs constructor til EF Core
-    private Konsultation() { }
+    private Konsultation()
+    {
+    }
 
     // Privat constructor — tvinger brug af factory-metoden Opret()
     private Konsultation(
@@ -48,31 +51,39 @@ public class Konsultation : AggregateRoot
         Id = Guid.NewGuid();
         Tidspunkt = tidspunkt;
         BehandlingstypeId = behandlingstypeId != Guid.Empty
-            ? behandlingstypeId : throw new DomainException("BehandlingstypeId er påkrævet.");
+            ? behandlingstypeId
+            : throw new DomainException("BehandlingstypeId er påkrævet.");
         PatientId = patientId != Guid.Empty
-            ? patientId : throw new DomainException("PatientId er påkrævet.");
+            ? patientId
+            : throw new DomainException("PatientId er påkrævet.");
         BehandlerId = behandlerId != Guid.Empty
-            ? behandlerId : throw new DomainException("BehandlerId er påkrævet.");
+            ? behandlerId
+            : throw new DomainException("BehandlerId er påkrævet.");
         Status = KonsultationStatus.Planlagt;
     }
 
     // ── Factory-metode ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Opretter en ny konsultation og validerer at den ikke overlapper
-    /// med eksisterende bookinger for hverken patienten eller behandleren.
+    ///     Opretter en ny konsultation og validerer at den ikke overlapper
+    ///     med eksisterende bookinger for hverken patienten eller behandleren.
     /// </summary>
     public static Konsultation Opret(
         Tidsinterval tidspunkt,
-        Guid behandlingstypeId,
-        Guid patientId,
+        Behandlingstype behandlingstype,
+        Patient patient,
         Guid behandlerId,
         IEnumerable<Konsultation> eksisterendeForPatient,
-        IEnumerable<Konsultation> eksisterendeForBehandler)
+        IEnumerable<Konsultation> eksisterendeForBehandler,
+        IEgenBetalingsBeregner egenbetalingsBeregner)
     {
-        var konsultation = new Konsultation(tidspunkt, behandlingstypeId, patientId, behandlerId);
+        var konsultation = new Konsultation(tidspunkt, behandlingstype.Id, patient.Id, behandlerId);
 
         konsultation.ValiderIngenOverlap(eksisterendeForPatient, eksisterendeForBehandler);
+        konsultation.EgenbetalingsBeløb =
+            egenbetalingsBeregner.BeregnEgenbetalingsBeløb(tidspunkt,
+                behandlingstype,
+                patient);
 
         return konsultation;
     }
@@ -85,7 +96,8 @@ public class Konsultation : AggregateRoot
             throw new DomainException("Kan ikke ændre type på afsluttet konsultation.");
 
         BehandlingstypeId = nyBehandlingstypeId != Guid.Empty
-            ? nyBehandlingstypeId : throw new DomainException("BehandlingstypeId er påkrævet.");
+            ? nyBehandlingstypeId
+            : throw new DomainException("BehandlingstypeId er påkrævet.");
     }
 
     public void Aflys()
@@ -108,8 +120,6 @@ public class Konsultation : AggregateRoot
         Status = KonsultationStatus.Afsluttet;
     }
 
-    public bool ErAktiv => Status != KonsultationStatus.Aflyst;
-
     // ── Privat overlap-validering ───────────────────────────────────────
 
     private void ValiderIngenOverlap(
@@ -122,12 +132,10 @@ public class Konsultation : AggregateRoot
             .FirstOrDefault(k => Tidspunkt.OverlapperMed(k.Tidspunkt));
 
         if (patientOverlap is not null)
-        {
             throw new DomainException(
                 $"Patienten har allerede en booking "
                 + $"({patientOverlap.Tidspunkt.Fra:HH:mm}-{patientOverlap.Tidspunkt.Til:HH:mm}) "
                 + $"der overlapper med det ønskede tidspunkt.");
-        }
 
         var behandlerOverlap = eksisterendeForBehandler
             .Where(k => k.Id != Id)
@@ -135,11 +143,9 @@ public class Konsultation : AggregateRoot
             .FirstOrDefault(k => Tidspunkt.OverlapperMed(k.Tidspunkt));
 
         if (behandlerOverlap is not null)
-        {
             throw new DomainException(
                 $"Behandleren har allerede en booking "
                 + $"({behandlerOverlap.Tidspunkt.Fra:HH:mm}-{behandlerOverlap.Tidspunkt.Til:HH:mm}) "
                 + $"der overlapper med det ønskede tidspunkt.");
-        }
     }
 }

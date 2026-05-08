@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using MinKlinik.Domain.Rabat;
 using MinKlinik.Facade.Queries;
 using MinKlinik.Infrastructure.Persistence;
 using MinKlinik.Infrastructure.QueryHandlers;
@@ -76,5 +77,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IBehandlingstypeQueries, BehandlingstypeQueriesImpl>();
         services.AddScoped<IPatientQueries, PatientQueriesImpl>();
         services.AddScoped<IBehandlerQueries, BehandlerQueriesImpl>();
+
+        // Domainservices
+        services.AddScoped<IRabatStrategi, StandardRabat>();
+        services.AddScoped<IRabatStrategi, StudenterRabat>();
+        services.AddScoped<IRabatStrategi, SeniorRabat>();
+        services.AddScoped<IRabatStrategi, BlackFridayRabat>();
+        services.AddScoped<IEgenBetalingsBeregner, EgenBetalingsBeregner>();
     }
 }
