@@ -1,0 +1,100 @@
+@page "/stamdata"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IBehandlingstypeQueries BehandlingstypeQueries
+@inject IPatientQueries PatientQueries
+@inject IBehandlerQueries BehandlerQueries
+
+<PageTitle>Stamdata</PageTitle>
+
+<h2>Stamdata</h2>
+
+@if (_fejl is not null)
+{
+    <p class="text-danger">@_fejl</p>
+}
+else if (_indlaeser)
+{
+    <p>Indlaeser stamdata...</p>
+}
+else
+{
+    <section>
+        <h3>Behandlingstyper</h3>
+        @if ((Behandlingstyper?.Count ?? 0) == 0)
+        {
+            <p>Ingen behandlingstyper.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var type in Behandlingstyper ?? [])
+                {
+                    <li>@type.Navn</li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section>
+        <h3>Patienter</h3>
+        @if ((Patienter?.Count ?? 0) == 0)
+        {
+            <p>Ingen patienter.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var patient in Patienter ?? [])
+                {
+                    <li>@patient.Navn</li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section>
+        <h3>Behandlere</h3>
+        @if ((Behandlere?.Count ?? 0) == 0)
+        {
+            <p>Ingen behandlere.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var behandler in Behandlere ?? [])
+                {
+                    <li>@behandler.Navn (@behandler.Speciale)</li>
+                }
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    private bool _indlaeser = true;
+    private string? _fejl;
+    [PersistentState]
+    public IReadOnlyList<BehandlingstypeDto>? Behandlingstyper { get; set; }
+    [PersistentState]
+    public IReadOnlyList<PatientDto>? Patienter { get; set; }
+    [PersistentState]
+    public IReadOnlyList<BehandlerDto>? Behandlere { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Behandlingstyper ??= await BehandlingstypeQueries.HentAlleAsync();
+            Patienter ??= await PatientQueries.HentAlleAsync();
+            Behandlere ??= await BehandlerQueries.HentAlleAsync();
+        }
+        catch (Exception ex)
+        {
+            _fejl = ex.Message;
+        }
+        finally
+        {
+            _indlaeser = false;
+        }
+    }
+}

@@ -1,0 +1,120 @@
+@page "/afslut-konsultation"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IKonsultationQueries KonsultationQueries
+@inject IAfslutKonsultationUseCase AfslutKonsultationUseCase
+
+<PageTitle>Afslut konsultation</PageTitle>
+
+<h2>Afslut konsultation</h2>
+
+@if (_fejl is not null)
+{
+    <p class="text-danger">@_fejl</p>
+}
+else if (_indlaeser)
+{
+    <p>Indlaeser konsultationer...</p>
+}
+else if ((AktiveKonsultationer?.Count ?? 0) == 0)
+{
+    <p>Ingen aktive konsultationer.</p>
+}
+else
+{
+    <section>
+        <EditForm Model="_model" OnValidSubmit="OnValidSubmitAsync" FormName="afslut-konsultation-form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <fieldset>
+                <legend>Afslut konsultation med notat</legend>
+
+                <div class="mb-3">
+                    <label for="konsultationSelect" class="form-label">Konsultation</label>
+                    <KonsultationSelect Id="konsultationSelect"
+                                        Konsultationer="AktiveKonsultationer ?? []"
+                                        Value="_model.KonsultationId"
+                                        ValueChanged="@(value => _model.KonsultationId = value)"
+                                        ValueExpression="() => _model.KonsultationId" />
+                    <ValidationMessage For="() => _model.KonsultationId" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="notatInput" class="form-label">Notat</label>
+                    <InputTextArea id="notatInput" @bind-Value="_model.Notat" class="form-control" />
+                    <ValidationMessage For="() => _model.Notat" />
+                </div>
+
+                <button class="btn btn-primary" type="submit">Afslut</button>
+            </fieldset>
+        </EditForm>
+    </section>
+
+    <section aria-live="polite" class="mt-3">
+        @if (_statusbesked is not null)
+        {
+            <p>@_statusbesked</p>
+        }
+    </section>
+}
+
+@code {
+    private readonly AfslutKonsultationInputModel _model = new();
+    private bool _indlaeser = true;
+    private string? _fejl;
+    private string? _statusbesked;
+    [PersistentState]
+    public IReadOnlyList<KonsultationDto>? AktiveKonsultationer { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HentAktiveAsync();
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        _statusbesked = null;
+        _fejl = null;
+        if (_model.KonsultationId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await AfslutKonsultationUseCase.Udfør(
+                new AfslutKonsultationRequest(_model.KonsultationId.Value, _model.Notat.Trim()));
+
+            _statusbesked = "Konsultation afsluttet.";
+            _model.Notat = string.Empty;
+            _model.KonsultationId = null;
+            AktiveKonsultationer = null;
+            await HentAktiveAsync();
+        }
+        catch (Exception ex)
+        {
+            _fejl = ex.Message;
+        }
+    }
+
+    private async Task HentAktiveAsync()
+    {
+        try
+        {
+            _indlaeser = true;
+            if (AktiveKonsultationer is null)
+            {
+                var alle = await KonsultationQueries.HentAlleAsync();
+                AktiveKonsultationer = alle.Where(x => x.Status != "Aflyst").ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _fejl = ex.Message;
+        }
+        finally
+        {
+            _indlaeser = false;
+        }
+    }
+}
