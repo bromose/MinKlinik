@@ -1,0 +1,41 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Segoe UI, Arial, sans-serif;
+  line-height: 1.5;
+  color: #1b1b1b;
+  background: #f5f7fa;
+}
+
+header, nav, main, aside, footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.8rem 1rem;
+}
+
+header {
+  background: #1e3a5f;
+  color: #fff;
+}
+
+nav ul {
+  display: flex;
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+article, aside {
+  background: #fff;
+  border: 1px solid #d8dce2;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+footer {
+  color: #5b6170;
+}

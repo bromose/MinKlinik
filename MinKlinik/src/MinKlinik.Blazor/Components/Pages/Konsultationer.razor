@@ -1,0 +1,47 @@
+@page "/konsultationer"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IKonsultationReader KonsultationReader
+
+<PageTitle>Konsultationer</PageTitle>
+
+<h2>Konsultationer</h2>
+
+@if (_fejl is not null)
+{
+    <p class="text-danger">@_fejl</p>
+}
+else if (_indlaeser)
+{
+    <p>Indlaeser konsultationer...</p>
+}
+else if ((Konsultationerne?.Count ?? 0) == 0)
+{
+    <p>(ingen)</p>
+}
+else
+{
+    <KonsultationTable Konsultationer="Konsultationerne ?? []" Caption="Alle konsultationer" />
+}
+
+@code {
+    private bool _indlaeser = true;
+    private string? _fejl;
+    [PersistentState]
+    public IReadOnlyList<KonsultationDto>? Konsultationerne { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Konsultationerne ??= await KonsultationReader.HentAlleAsync();
+        }
+        catch (Exception ex)
+        {
+            _fejl = ex.Message;
+        }
+        finally
+        {
+            _indlaeser = false;
+        }
+    }
+}

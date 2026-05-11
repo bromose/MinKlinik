@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kapitel 14 - Semantisk HTML5</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <header>
+    <h1>MinKlinik</h1>
+    <p>Semantisk HTML5-eksempel til kapitel 14.</p>
+  </header>
+
+  <nav aria-label="Hovednavigation">
+    <ul>
+      <li><a href="#intro">Intro</a></li>
+      <li><a href="#dagens">Dagens konsultationer</a></li>
+      <li><a href="#note">Bemærkning</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <article id="intro">
+      <h2>Formål</h2>
+      <p>Denne side viser semantiske elementer uden Blazor eller JavaScript.</p>
+    </article>
+
+    <article id="dagens">
+      <h2>Dagens konsultationer</h2>
+      <section>
+        <h3>Planlagt</h3>
+        <p>09:00 - Konsultation med patient A.</p>
+      </section>
+      <section>
+        <h3>Afsluttet</h3>
+        <p>10:00 - Konsultation med patient B.</p>
+      </section>
+    </article>
+  </main>
+
+  <aside id="note">
+    <h2>Tip</h2>
+    <p>Åbn filen direkte i browseren for at se struktur og styling.</p>
+  </aside>
+
+  <footer>
+    <small>MinKlinik - Kapitel 14 eksempel</small>
+  </footer>
+</body>
+</html>
