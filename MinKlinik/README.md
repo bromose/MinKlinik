@@ -2,7 +2,7 @@
 
 Et klinik-bookingsystem bygget med Clean Architecture, DDD, CQS og Composition Root-mønstret (`internal sealed` use case-impl + public kontrakt + DI-extension) i C# 13 / .NET 10. **MinKlinik er det gennemgående eksempel i lærebogen *Software der holder — Professionel C#-udvikling med Clean Architecture, DDD og parallelisme*** (Bromose Publishing, 2026, ISBN 978-87-976951-1-1).
 
-Bogen forklarer *hvorfor* — denne kode viser *hvordan*. Repo'et er versionsstyret med ét tag pr. kapitel (`kap-01` … `kap-25`), så du kan checke kodebasens tilstand ud som den ser ud ved hvert kapitels afslutning.
+Bogen forklarer *hvorfor* — denne kode viser *hvordan*. Repo'et har udvalgte **branches** der markerer *start-tilstanden* for et kapitel, plus `main` med den komplette løsning.
 
 ## Hvordan bruger du repo'et?
 
@@ -13,10 +13,10 @@ cd minklinik
 # Se den færdige kodebase (alle 25 kapitler implementeret)
 git checkout main
 
-# Eller hop til en bestemt kapitel-tilstand
-git checkout kap-08    # som koden ser ud efter kapitel 8 (DDD-pakke afsluttet)
-git checkout kap-12    # efter kapitel 12 (EF Core 10 introduceret)
-git checkout kap-25    # færdig version (samme som main)
+# Eller hop til en bestemt kapitel-startilstand
+git checkout kap-03    # tilstand ved start af kap. 3 = efter kap. 2
+git checkout kap-13    # tilstand ved start af kap. 13 = efter kap. 12
+git checkout kap-22    # tilstand ved start af kap. 22 = efter kap. 21
 
 # Kør build og tests
 dotnet build
@@ -30,49 +30,27 @@ dotnet run --project src/MinKlinik.Blazor
 
 > **Læs bogen først.** Repo'et er en *reference-implementation*, ikke en tutorial. Bogens kapitler introducerer koncepterne trin for trin; her ser du resultatet samlet. Hvis du ikke har bogen, så start på `leanpub.com/software-der-holder`.
 
-## Tag-konvention
+## Branch-konvention
 
-| Tag | Tilstand | Bog-kapitel |
-|-----|----------|-------------|
-| `kap-01` | Indkapsling, kohæsion, kobling — Konsultation med `private set` + guard clauses | Kapitel 1 |
-| `kap-02` | + SRP, OCP, ISP refaktorering | Kapitel 2 |
-| `kap-03` | + DIP og IoC-container | Kapitel 3 |
-| ... | ... | ... |
-| `kap-25` | Færdig version — samme som `main` | Kapitel 25 |
+Repo'et har 9 branches. Hver kap-branch markerer **tilstanden ved start af det kapitel** = færdig tilstand efter foregående kapitel.
 
-Detaljeret tag-strategi og acceptkriterier pr. kapitel ligger i `docs/BOG-KODE-PLAN.md`.
+| Branch  | Tilstand | Svarer til "efter kapitel" |
+|---------|----------|----------------------------|
+| `kap-01` | Tom baseline før kap. 1 | — (start) |
+| `kap-02` | Efter kap. 1 | 1 |
+| `kap-03` | Efter kap. 2 (SRP/OCP/LSP/ISP) | 2 |
+| `kap-13` | Efter kap. 12 (Domain + UseCases + EF Core 10) | 3-12 |
+| `kap-17` | Efter kap. 16 (LINQ + Web + Forms) | 13-16 |
+| `kap-22` | Efter kap. 21 (Strategy + parallelisme + async) | 17-21 |
+| `kap-23` | Efter kap. 22 (Tasks og Parallel CPU-bound) | 22 |
+| `kap-24` | Efter kap. 23 (Parallel Strategy-integration) | 23 |
+| `main`  | Den komplette løsning (efter kap. 25) | 24-25 |
 
-## Baglaens tag-strategi
+**Pragmatisk regel:** Hvis du vil se koden *efter* kapitel N, find første kap-branch med nummer > N (eller `main`).
 
-Tag-kæden er etableret baglæns fra den færdige tilstand:
+## Afvigelseslog (bog vs kode)
 
-1. `main` er baseline og tagget som `kap-25`.
-2. For hvert trin oprettes `prep-kap-(N-1)` fra `kap-N`.
-3. Hvert trin committes med `Forberedelse: trin baglaens mod kap-(N-1)`.
-4. Committen tagges derefter som `kap-(N-1)`.
-
-Det gør det muligt at kontrollere bogens progression i en reproducerbar kæde af commits og tags.
-
-## Verifikation af tags
-
-Kør enkelt-tag verifikation med:
-
-```powershell
-pwsh ./scripts/verify-tag.ps1 -TagName kap-12
-```
-
-Kør alle tags fra `kap-01` til `kap-25`:
-
-```powershell
-1..25 | ForEach-Object {
-  $tag = "kap-{0:D2}" -f $_
-  pwsh ./scripts/verify-tag.ps1 -TagName $tag
-}
-```
-
-## Afvigelseslog (bogplan vs kode)
-
-- Infrastructure bruger `AppDbContext` i `src/MinKlinik.Infrastructure/Persistence/AppDbContext.cs` (planen refererer navnet `MinKlinikDbContext`).
+- Infrastructure bruger `AppDbContext` i `src/MinKlinik.Infrastructure/Persistence/AppDbContext.cs`.
 - EF Core value object dokumentation ligger i `docs/EF-Core-ValueObject-strategier.md`.
 - Kapitel 14 statisk HTML/CSS eksempel ligger i `docs/eksempler/`.
 - Samtidighed/parallelisme/algoritme-eksempler ligger i `samples/`.
