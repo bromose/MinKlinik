@@ -54,6 +54,9 @@ public record SøgKonsultationerRequest(
     Guid? BehandlerId,
     Guid? PatientId);
 
+public record MånedsstatistikDto(int År, int Måned, int Count, decimal SamletScore);
+
+
 // === Black Friday-simulering (kap. 23 — read-projection) ===
 //
 // Det her er en projektion, IKKE en command. Strategy-mønstret fra kap. 18

@@ -35,21 +35,31 @@ internal sealed class KonsultationReader : IKonsultationReader
 
     public async Task<IReadOnlyList<KonsultationDto>> HentAlleAsync()
     {
-        return await _db.Konsultationer
+        return await HentAlleQueryable().ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<KonsultationDto>> HentForMånedAsync(int år, int måned)
+    {
+        return await HentAlleQueryable().Where(a => a.Fra.Year == år && a.Fra.Month == måned).ToListAsync();
+    }
+
+    private IQueryable<KonsultationDto> HentAlleQueryable()
+    {
+        return _db.Konsultationer
             .AsNoTracking()
             .Select(k => new KonsultationDto(
                 k.Id,
                 k.Tidspunkt.Fra,
                 k.Tidspunkt.Til,
                 k.BehandlingstypeId,
-                _db.Behandlingstyper.Where(bt => bt.Id == k.BehandlingstypeId).Select(bt => bt.Navn).FirstOrDefault() ?? "",
+                _db.Behandlingstyper.Where(bt => bt.Id == k.BehandlingstypeId).Select(bt => bt.Navn).FirstOrDefault() ??
+                "",
                 k.PatientId,
                 _db.Patienter.Where(p => p.Id == k.PatientId).Select(p => p.Navn).FirstOrDefault() ?? "",
                 k.BehandlerId,
                 _db.Behandlere.Where(b => b.Id == k.BehandlerId).Select(b => b.Navn).FirstOrDefault() ?? "",
                 k.Status.ToString(),
-                k.Notat))
-            .ToListAsync();
+                k.Notat)).AsQueryable();
     }
 }
 

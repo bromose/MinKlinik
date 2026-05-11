@@ -14,6 +14,7 @@ public interface IKonsultationReader
 {
     Task<KonsultationDto?> HentAsync(Guid id);
     Task<IReadOnlyList<KonsultationDto>> HentAlleAsync();
+    Task<IReadOnlyList<KonsultationDto>> HentForMånedAsync(int år, int måned);
 }
 
 public interface IBehandlingstypeReader
