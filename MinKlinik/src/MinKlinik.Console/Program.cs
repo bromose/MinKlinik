@@ -2,8 +2,6 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MinKlinik.Domain.Entities;
-using MinKlinik.Domain.Enums;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 using MinKlinik.UseCases.Dtos;
 using MinKlinik.UseCases.Konsultationer;
@@ -268,7 +266,7 @@ static async Task SeedManyKonsultationerAsync(IServiceProvider sp)
         antal = 12000;
 
     var db = sp.GetRequiredService<AppDbContext>();
-    var beregner = sp.GetRequiredService<IEgenBetalingsBeregner>();
+
 
     // Sikr stamdata findes
     var behandlingstyper = await db.Behandlingstyper.ToListAsync();
@@ -279,17 +277,6 @@ static async Task SeedManyKonsultationerAsync(IServiceProvider sp)
     {
         Console.WriteLine("Mangler stamdata. Initialiser DB først.");
         return;
-    }
-
-    // Vi tilføjer en behandlingstype med egenbetaling hvis ingen findes —
-    // ellers vil rabatterne altid være 0 og benchmarket bliver kedeligt.
-    var betalingsType = behandlingstyper.FirstOrDefault(bt => bt.ErBetalingsYdelse);
-    if (betalingsType is null)
-    {
-        betalingsType = new Behandlingstype("Forebyggende undersøgelse", new EgenbetalingsBeløb(800));
-        db.Behandlingstyper.Add(betalingsType);
-        behandlingstyper.Add(betalingsType);
-        await db.SaveChangesAsync();
     }
 
     var sw = Stopwatch.StartNew();
@@ -314,12 +301,11 @@ static async Task SeedManyKonsultationerAsync(IServiceProvider sp)
 
         var konsultation = Konsultation.Opret(
             tidspunkt,
-            bt,
-            patient,
+            bt.Id,
+            patient.Id,
             behandler.Id,
             eksisterendeForPatient: Array.Empty<Konsultation>(),
-            eksisterendeForBehandler: Array.Empty<Konsultation>(),
-            egenbetalingsBeregner: beregner);
+            eksisterendeForBehandler: Array.Empty<Konsultation>());
 
         batch.Add(konsultation);
 

@@ -9,6 +9,5 @@ public class BehandlingstypeConfiguration : IEntityTypeConfiguration<Behandlings
     public void Configure(EntityTypeBuilder<Behandlingstype> b)
     {
         b.HasKey(k => k.Id);
-        b.ComplexProperty(c => c.EgenbetalingsBeløb, t => t.ToJson());
     }
 }

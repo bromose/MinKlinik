@@ -1,6 +1,5 @@
 using MinKlinik.Domain.Enums;
 using MinKlinik.Domain.Exceptions;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 
 namespace MinKlinik.Domain.Entities;
@@ -29,7 +28,6 @@ public class Konsultation : AggregateRoot
 
     public string Notat { get; private set; } = string.Empty;
     public KonsultationStatus Status { get; private set; }
-    public EgenbetalingsBeløb EgenbetalingsBeløb { get; private set; } = new(0);
 
     public bool ErAktiv => Status != KonsultationStatus.Aflyst;
 
@@ -70,21 +68,15 @@ public class Konsultation : AggregateRoot
     /// </summary>
     public static Konsultation Opret(
         Tidsinterval tidspunkt,
-        Behandlingstype behandlingstype,
-        Patient patient,
+        Guid behandlingstypeId,
+        Guid patientId,
         Guid behandlerId,
         IEnumerable<Konsultation> eksisterendeForPatient,
-        IEnumerable<Konsultation> eksisterendeForBehandler,
-        IEgenBetalingsBeregner egenbetalingsBeregner)
+        IEnumerable<Konsultation> eksisterendeForBehandler)
     {
-        var konsultation = new Konsultation(tidspunkt, behandlingstype.Id, patient.Id, behandlerId);
+        var konsultation = new Konsultation(tidspunkt, behandlingstypeId, patientId, behandlerId);
 
         konsultation.ValiderIngenOverlap(eksisterendeForPatient, eksisterendeForBehandler);
-        konsultation.EgenbetalingsBeløb =
-            egenbetalingsBeregner.BeregnEgenbetalingsBeløb(tidspunkt,
-                behandlingstype,
-                patient);
-
         return konsultation;
     }
 

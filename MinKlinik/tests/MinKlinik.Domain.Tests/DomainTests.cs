@@ -1,7 +1,6 @@
 using MinKlinik.Domain.Entities;
 using MinKlinik.Domain.Enums;
 using MinKlinik.Domain.Exceptions;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 using FixtureBuilder;
 using Xunit;
@@ -48,14 +47,13 @@ public class TidsintervalTests
 public class KonsultationTests
 {
     private readonly Guid _behandlerId = Guid.NewGuid();
-    private readonly IEgenBetalingsBeregner _egenbetalingsBeregner = new StubEgenBetalingsBeregner();
-
+    
     private Tidsinterval TimeRange(int fraTime, int tilTime)
         => new(DateTime.UtcNow.AddDays(1).Date.AddHours(fraTime),
                DateTime.UtcNow.AddDays(1).Date.AddHours(tilTime));
 
     private static Behandlingstype NewTreatmentType()
-        => new("Undersøgelse", new EgenbetalingsBeløb(350));
+        => new("Undersøgelse");
 
     private static Patient NewPatient()
         => new("Jens Jensen", "010190-1234");
@@ -67,12 +65,11 @@ public class KonsultationTests
     {
         return Konsultation.Opret(
             tidspunkt ?? TimeRange(9, 10),
-            NewTreatmentType(),
-            patient ?? NewPatient(),
+            NewTreatmentType().Id,
+            patient?.Id ?? NewPatient().Id,
             behandlerId ?? _behandlerId,
             eksisterendeForPatient: Array.Empty<Konsultation>(),
-            eksisterendeForBehandler: Array.Empty<Konsultation>(),
-            egenbetalingsBeregner: _egenbetalingsBeregner);
+            eksisterendeForBehandler: Array.Empty<Konsultation>());
     }
 
     [Fact]
@@ -115,8 +112,8 @@ public class KonsultationTests
     {
         var fortid = new Tidsinterval(DateTime.UtcNow.AddDays(-2), DateTime.UtcNow.AddDays(-1));
         Assert.Throws<DomainException>(() =>
-            Konsultation.Opret(fortid, NewTreatmentType(), NewPatient(), _behandlerId,
-                Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner));
+            Konsultation.Opret(fortid, NewTreatmentType().Id, NewPatient().Id, _behandlerId,
+                Array.Empty<Konsultation>(), Array.Empty<Konsultation>()));
     }
 
     [Fact]
@@ -124,15 +121,14 @@ public class KonsultationTests
     {
         var patient = NewPatient();
         var eksisterende = Konsultation.Opret(
-            TimeRange(9, 10), NewTreatmentType(), patient, _behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
+            TimeRange(9, 10), NewTreatmentType().Id, patient.Id, _behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
 
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
-                TimeRange(9, 11), NewTreatmentType(), patient, Guid.NewGuid(),
+                TimeRange(9, 11), NewTreatmentType().Id, patient.Id, Guid.NewGuid(),
                 eksisterendeForPatient: new[] { eksisterende },
-                eksisterendeForBehandler: Array.Empty<Konsultation>(),
-                egenbetalingsBeregner: _egenbetalingsBeregner));
+                eksisterendeForBehandler: Array.Empty<Konsultation>()));
     }
 
     [Fact]
@@ -141,15 +137,14 @@ public class KonsultationTests
         var behandlerId = Guid.NewGuid();
         var patient = NewPatient();
         var eksisterende = Konsultation.Opret(
-            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
+            TimeRange(9, 10), NewTreatmentType().Id, patient.Id, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
 
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
-                TimeRange(9, 11), NewTreatmentType(), NewPatient(), behandlerId,
+                TimeRange(9, 11), NewTreatmentType().Id, NewPatient().Id, behandlerId,
                 eksisterendeForPatient: Array.Empty<Konsultation>(),
-                eksisterendeForBehandler: new[] { eksisterende },
-                egenbetalingsBeregner: _egenbetalingsBeregner));
+                eksisterendeForBehandler: new[] { eksisterende }));
     }
 
     [Fact]
@@ -158,14 +153,13 @@ public class KonsultationTests
         var patient = NewPatient();
         var behandlerId = Guid.NewGuid();
         var eksisterende = Konsultation.Opret(
-            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
+            TimeRange(9, 10), NewTreatmentType().Id, patient.Id, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
 
         var nyKonsultation = Konsultation.Opret(
-            TimeRange(10, 11), NewTreatmentType(), patient, behandlerId,
+            TimeRange(10, 11), NewTreatmentType().Id, patient.Id, behandlerId,
             eksisterendeForPatient: new[] { eksisterende },
-            eksisterendeForBehandler: new[] { eksisterende },
-            egenbetalingsBeregner: _egenbetalingsBeregner);
+            eksisterendeForBehandler: new[] { eksisterende });
         Assert.NotNull(nyKonsultation);
     }
 
@@ -175,15 +169,14 @@ public class KonsultationTests
         var patient = NewPatient();
         var behandlerId = Guid.NewGuid();
         var aflyst = Konsultation.Opret(
-            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), _egenbetalingsBeregner);
+            TimeRange(9, 10), NewTreatmentType().Id, patient.Id, behandlerId,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
         aflyst.Aflys();
 
         var nyKonsultation = Konsultation.Opret(
-            TimeRange(9, 10), NewTreatmentType(), patient, behandlerId,
+            TimeRange(9, 10), NewTreatmentType().Id, patient.Id, behandlerId,
             eksisterendeForPatient: new[] { aflyst },
-            eksisterendeForBehandler: new[] { aflyst },
-            egenbetalingsBeregner: _egenbetalingsBeregner);
+            eksisterendeForBehandler: new[] { aflyst });
         Assert.NotNull(nyKonsultation);
     }
 
@@ -222,8 +215,6 @@ public class KonsultationTests
 
 public class KonsultationOpretTests
 {
-    private static readonly IEgenBetalingsBeregner EgenbetalingsBeregner = new StubEgenBetalingsBeregner();
-
     [Fact]
     public void GivenEmptyPractitionerId_WhenCreatingConsultation_ThenThrowsDomainException()
     {
@@ -232,17 +223,10 @@ public class KonsultationOpretTests
         Assert.Throws<DomainException>(() =>
             Konsultation.Opret(
                 tidspunkt,
-                new Behandlingstype("Undersøgelse", new EgenbetalingsBeløb(200)),
-                new Patient("Jens", "010190-1234"),
+                new Behandlingstype("Undersøgelse").Id,
+                new Patient("Jens", "010190-1234").Id,
                 Guid.Empty,
                 Array.Empty<Konsultation>(),
-                Array.Empty<Konsultation>(),
-                EgenbetalingsBeregner));
+                Array.Empty<Konsultation>()));
     }
-}
-
-internal sealed class StubEgenBetalingsBeregner : IEgenBetalingsBeregner
-{
-    public EgenbetalingsBeløb BeregnEgenbetalingsBeløb(Tidsinterval tidspunkt, Behandlingstype behandlingstype, Patient patient)
-        => new(behandlingstype.EgenbetalingsBeløb.Beløb);
 }

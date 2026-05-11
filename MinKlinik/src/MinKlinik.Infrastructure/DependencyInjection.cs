@@ -2,7 +2,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MinKlinik.Domain.Notifikation;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Infrastructure.Notifikation;
 using MinKlinik.Infrastructure.Persistence;
 using MinKlinik.Infrastructure.Readers;

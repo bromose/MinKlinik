@@ -14,27 +14,18 @@ namespace MinKlinik.Domain.Entities;
 public class Behandlingstype : AggregateRoot
 {
     public string Navn { get; private set; } = string.Empty;
-    public EgenbetalingsBeløb EgenbetalingsBeløb { get; private set; } = new(0);
-
-    public bool ErBetalingsYdelse => EgenbetalingsBeløb.Beløb > 0;
 
     // Parameterløs constructor til EF Core
     private Behandlingstype()
     {
     }
 
-    public Behandlingstype(string navn, EgenbetalingsBeløb egenbetalingsBeløb)
+    public Behandlingstype(string navn)
     {
         if (string.IsNullOrWhiteSpace(navn))
             throw new DomainException("Behandlingstype skal have et navn.");
 
         Id = Guid.NewGuid();
         Navn = navn;
-        EgenbetalingsBeløb = egenbetalingsBeløb;
-    }
-
-    public void OpdaterEgenbetalingsBeløb(double beløb)
-    {
-        EgenbetalingsBeløb = new EgenbetalingsBeløb(beløb);
     }
 }

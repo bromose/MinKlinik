@@ -1,48 +1,48 @@
-using Moq;
-using Xunit;
 using MinKlinik.Domain.Entities;
+using MinKlinik.Domain.Enums;
 using MinKlinik.Domain.Exceptions;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 using MinKlinik.UseCases.Dtos;
-using MinKlinik.UseCases;
 using MinKlinik.UseCases.Konsultationer;
 using MinKlinik.UseCases.Notifikation;
+using Moq;
+using Xunit;
 
 namespace MinKlinik.UseCases.Tests;
 
 public class OpretKonsultationUseCaseTests
 {
-    private readonly Mock<IKonsultationRepository> _mockKonsRepo = new();
-    private readonly Mock<IBehandlingstypeRepository> _mockBehandTypeRepo = new();
-    private readonly Mock<IPatientRepository> _mockPatientRepo = new();
     private readonly Mock<IBehandlerRepository> _mockBehandlerRepo = new();
-    private readonly Mock<IEgenBetalingsBeregner> _mockEgenbetalingsBeregner = new();
+    private readonly Mock<IBehandlingstypeRepository> _mockBehandTypeRepo = new();
+    private readonly Mock<IKonsultationRepository> _mockKonsRepo = new();
     private readonly Mock<IKonsultationsNotifier> _mockNotifier = new();
+    private readonly Mock<IPatientRepository> _mockPatientRepo = new();
 
-    private OpretKonsultationUseCase CreateSut() => new(
-        _mockKonsRepo.Object,
-        _mockBehandTypeRepo.Object,
-        _mockPatientRepo.Object,
-        _mockBehandlerRepo.Object,
-        _mockEgenbetalingsBeregner.Object,
-        _mockNotifier.Object);
+    private OpretKonsultationUseCase CreateSut()
+    {
+        return new OpretKonsultationUseCase(
+            _mockKonsRepo.Object,
+            _mockBehandTypeRepo.Object,
+            _mockPatientRepo.Object,
+            _mockBehandlerRepo.Object,
+            _mockNotifier.Object);
+    }
 
     private static Behandlingstype NewTreatmentType(double beløb = 300)
-        => new("Undersøgelse", new EgenbetalingsBeløb(beløb));
+    {
+        return new Behandlingstype("Undersøgelse");
+    }
 
     private static Patient NewPatient()
-        => new("Jens", "010190-1234");
-
-    private static Domain.ValueObjects.Tidsinterval TimeRange(DateTime fra, DateTime til)
-        => new(fra, til);
-
-    private void SetupCoPayment(double beløb = 0)
     {
-        _mockEgenbetalingsBeregner
-            .Setup(r => r.BeregnEgenbetalingsBeløb(It.IsAny<Domain.ValueObjects.Tidsinterval>(), It.IsAny<Behandlingstype>(), It.IsAny<Patient>()))
-            .Returns(new EgenbetalingsBeløb(beløb));
+        return new Patient("Jens", "010190-1234");
     }
+
+    private static Tidsinterval TimeRange(DateTime fra, DateTime til)
+    {
+        return new Tidsinterval(fra, til);
+    }
+
 
     [Fact]
     public async Task GivenValidRequest_WhenExecutingUseCase_ThenAddsConsultationAndSaves()
@@ -61,7 +61,6 @@ public class OpretKonsultationUseCaseTests
             .ReturnsAsync(new List<Konsultation>());
         _mockKonsRepo.Setup(r => r.HentForBehandlerAsync(behandlerId))
             .ReturnsAsync(new List<Konsultation>());
-        SetupCoPayment();
 
         var request = new OpretKonsultationRequest(
             DateTime.UtcNow.AddDays(1),
@@ -82,7 +81,7 @@ public class OpretKonsultationUseCaseTests
     {
         _mockBehandTypeRepo.Setup(r => r.HentAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Behandlingstype?)null);
-        SetupCoPayment();
+         
 
         var request = new OpretKonsultationRequest(
             DateTime.UtcNow.AddDays(1),
@@ -104,13 +103,11 @@ public class OpretKonsultationUseCaseTests
         var til = DateTime.UtcNow.AddDays(1).Date.AddHours(10);
         var behandlingstype = NewTreatmentType();
         var patient = NewPatient();
-        var egenbetalingsBeregner = Mock.Of<IEgenBetalingsBeregner>(r =>
-            r.BeregnEgenbetalingsBeløb(It.IsAny<Domain.ValueObjects.Tidsinterval>(), It.IsAny<Behandlingstype>(), It.IsAny<Patient>()) == new EgenbetalingsBeløb(0));
 
         var eksisterende = Konsultation.Opret(
             TimeRange(fra, til),
-            behandlingstype, patient, behandlerId1,
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(), egenbetalingsBeregner);
+            behandlingstype.Id, patient.Id, behandlerId1,
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
 
         _mockBehandTypeRepo.Setup(r => r.HentAsync(typeId))
             .ReturnsAsync(behandlingstype);
@@ -122,7 +119,7 @@ public class OpretKonsultationUseCaseTests
             .ReturnsAsync(new List<Konsultation> { eksisterende });
         _mockKonsRepo.Setup(r => r.HentForBehandlerAsync(behandlerId2))
             .ReturnsAsync(new List<Konsultation>());
-        SetupCoPayment();
+         
 
         var request = new OpretKonsultationRequest(
             fra.AddMinutes(30), til.AddMinutes(30),
@@ -139,14 +136,13 @@ public class AfslutKonsultationUseCaseTests
     public async Task GivenValidRequest_WhenExecutingUseCase_ThenCompletesConsultation()
     {
         var konsultation = Konsultation.Opret(
-            new Domain.ValueObjects.Tidsinterval(
+            new Tidsinterval(
                 DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)),
-            new Behandlingstype("Opfølgning", new EgenbetalingsBeløb(100)),
-            new Patient("Jens", "010190-1234"),
+            new Behandlingstype("Opfølgning").Id,
+            new Patient("Jens", "010190-1234").Id,
             Guid.NewGuid(),
-            Array.Empty<Konsultation>(), Array.Empty<Konsultation>(),
-            Mock.Of<IEgenBetalingsBeregner>(r =>
-                r.BeregnEgenbetalingsBeløb(It.IsAny<Domain.ValueObjects.Tidsinterval>(), It.IsAny<Behandlingstype>(), It.IsAny<Patient>()) == new EgenbetalingsBeløb(0)));
+            Array.Empty<Konsultation>(), Array.Empty<Konsultation>());
+            
 
         var mockRepo = new Mock<IKonsultationRepository>();
         mockRepo.Setup(r => r.HentAsync(konsultation.Id)).ReturnsAsync(konsultation);
@@ -154,7 +150,7 @@ public class AfslutKonsultationUseCaseTests
         var useCase = new AfslutKonsultationUseCase(mockRepo.Object);
         await useCase.Udfør(new AfslutKonsultationRequest(konsultation.Id, "Alt OK"));
 
-        Assert.Equal(Domain.Enums.KonsultationStatus.Afsluttet, konsultation.Status);
+        Assert.Equal(KonsultationStatus.Afsluttet, konsultation.Status);
         mockRepo.Verify(r => r.GemAsync(), Times.Once);
     }
 }

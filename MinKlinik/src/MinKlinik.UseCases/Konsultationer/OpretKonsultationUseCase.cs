@@ -1,6 +1,5 @@
 using MinKlinik.Domain.Entities;
 using MinKlinik.Domain.Exceptions;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Domain.ValueObjects;
 using MinKlinik.UseCases.Dtos;
 using MinKlinik.UseCases.Notifikation;
@@ -13,7 +12,6 @@ internal sealed class OpretKonsultationUseCase : IOpretKonsultationUseCase
     private readonly IBehandlingstypeRepository _behandlingstypeRepo;
     private readonly IPatientRepository _patientRepo;
     private readonly IBehandlerRepository _behandlerRepo;
-    private readonly IEgenBetalingsBeregner _egenBetalingsBeregner;
     private readonly IKonsultationsNotifier _notifier;
 
     public OpretKonsultationUseCase(
@@ -21,14 +19,12 @@ internal sealed class OpretKonsultationUseCase : IOpretKonsultationUseCase
         IBehandlingstypeRepository behandlingstypeRepo,
         IPatientRepository patientRepo,
         IBehandlerRepository behandlerRepo,
-        IEgenBetalingsBeregner egenBetalingsBeregner,
         IKonsultationsNotifier notifier)
     {
         _konsultationRepo = konsultationRepo;
         _behandlingstypeRepo = behandlingstypeRepo;
         _patientRepo = patientRepo;
         _behandlerRepo = behandlerRepo;
-        _egenBetalingsBeregner = egenBetalingsBeregner;
         _notifier = notifier;
     }
 
@@ -50,12 +46,11 @@ internal sealed class OpretKonsultationUseCase : IOpretKonsultationUseCase
         var tidspunkt = new Tidsinterval(request.Fra, request.Til);
         var konsultation = Konsultation.Opret(
             tidspunkt,
-            behandlingstype,
-            patient,
+            behandlingstype.Id,
+            patient.Id,
             request.BehandlerId,
             patientBookinger,
-            behandlerBookinger,
-            _egenBetalingsBeregner
+            behandlerBookinger
             );
 
         // 3. Persistér
