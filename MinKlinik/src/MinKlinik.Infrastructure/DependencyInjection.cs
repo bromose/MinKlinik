@@ -2,7 +2,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MinKlinik.Domain.Notifikation;
-using MinKlinik.Domain.Rabat;
 using MinKlinik.Infrastructure.Notifikation;
 using MinKlinik.Infrastructure.Persistence;
 using MinKlinik.Infrastructure.Readers;
@@ -94,15 +93,5 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<INotifikation, EmailNotifikation>();
         services.AddSingleton<INotifikation, SmsNotifikation>();
 
-        // Black Friday-simulering (kap. 23 — read-projection).
-        // Vi registrerer den parallelle som default — den sekventielle er
-        // kun til benchmark-sammenligning fra Console-appen.
-        services.AddScoped<BlackFridaySimuleringSekventielQueryImpl>();
-        services.AddScoped<IBlackFridaySimuleringQuery, BlackFridaySimuleringQueryImpl>();
-
-        // BlackFridayRabat skal også kunne injiceres som konkret type,
-        // ikke bare som IRabatStrategi (jf. kap. 23 §23.3.1 — query handlers
-        // bruger den specifikke strategi, ikke hele EgenBetalingsBeregner).
-        services.AddScoped<BlackFridayRabat>();
     }
 }

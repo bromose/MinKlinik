@@ -22,9 +22,9 @@ public class SeedData
 
         if (db.Behandlingstyper.Any()) return;
 
-        var undersøgelse = new Behandlingstype("Undersøgelse", new EgenbetalingsBeløb(0));
-        var vaccination = new Behandlingstype("Vaccination", new EgenbetalingsBeløb(100));
-        var kontrol = new Behandlingstype("Kontrol", new EgenbetalingsBeløb(0));
+        var undersøgelse = new Behandlingstype("Undersøgelse");
+        var vaccination = new Behandlingstype("Vaccination");
+        var kontrol = new Behandlingstype("Kontrol");
 
         db.Behandlingstyper!.AddRange(undersøgelse, vaccination, kontrol);
 

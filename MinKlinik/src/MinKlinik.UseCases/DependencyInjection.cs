@@ -1,4 +1,3 @@
-using MinKlinik.Domain.Rabat;
 using MinKlinik.UseCases.Konsultationer;
 using MinKlinik.UseCases.Notifikation;
 
@@ -20,13 +19,6 @@ public static class UseCasesServiceCollectionExtensions
 
         // Notifikations-orkestrator (kap. 1 §1.3.10 + kap. 2 §2.3.3 — polymorfi via DI)
         services.AddScoped<IKonsultationsNotifier, KonsultationsNotifier>();
-
-        // Domainservices
-        services.AddScoped<IRabatStrategi, StandardRabat>();
-        services.AddScoped<IRabatStrategi, StudenterRabat>();
-        services.AddScoped<IRabatStrategi, SeniorRabat>();
-        services.AddScoped<IRabatStrategi, BlackFridayRabat>();
-        services.AddScoped<IEgenBetalingsBeregner, EgenBetalingsBeregner>();
 
         return services;
     }

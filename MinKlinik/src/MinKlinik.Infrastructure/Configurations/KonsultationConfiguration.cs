@@ -10,7 +10,6 @@ public class KonsultationConfiguration : IEntityTypeConfiguration<Konsultation>
     {
         b.HasKey(k => k.Id);
         b.ComplexProperty(k => k.Tidspunkt, t => t.ToJson());
-        b.ComplexProperty(c => c.EgenbetalingsBeløb, t => t.ToJson());
         b.Property(k => k.Status).HasConversion<string>();
     }
 }
