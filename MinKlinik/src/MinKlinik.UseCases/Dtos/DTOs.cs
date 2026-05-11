@@ -54,19 +54,3 @@ public record SøgKonsultationerRequest(
     Guid? BehandlerId,
     Guid? PatientId);
 
-// === Black Friday-simulering (kap. 23 — read-projection) ===
-//
-// Det her er en projektion, IKKE en command. Strategy-mønstret fra kap. 18
-// genbruges på query-siden for at vise et hypotetisk "hvad nu hvis"-scenarie
-// uden at mutere konsultations-aggregaterne (jf. kap. 18 §18.3.5 +
-// kap. 23 §23.3.1).
-
-public record BlackFridayRapportDto(
-    int AntalBookinger,
-    int AntalMedRabat,
-    double SamletRabat);
-
-public record RabatprojektionDto(
-    Guid KonsultationId,
-    double EgenbetalingsBeløb,
-    double RabatBeløb);

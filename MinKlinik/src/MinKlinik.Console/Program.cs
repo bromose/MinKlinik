@@ -80,9 +80,6 @@ static async Task RunMenuAsync(IServiceProvider rootSp)
                 case "6":
                     await SeedManyKonsultationerAsync(sp);
                     break;
-                case "7":
-                    await BenchmarkBlackFridayAsync(sp);
-                    break;
                 default:
                     Console.WriteLine("Ugyldigt valg.");
                     break;
@@ -347,55 +344,5 @@ static async Task SeedManyKonsultationerAsync(IServiceProvider sp)
 
 // === Benchmark Black Friday-rabat (kap. 23 §23.4) =========================
 
-static async Task BenchmarkBlackFridayAsync(IServiceProvider sp)
-{
-    var simuleretDato = NæsteBlackFriday();
-    Console.WriteLine($"Simulerer Black Friday {simuleretDato:yyyy-MM-dd} …");
 
-    // Sekventiel reference (registreret som konkret type så vi kan hente begge)
-    var sekventiel = sp.GetRequiredService<BlackFridaySimuleringSekventielQueryImpl>();
-    var parallel = sp.GetRequiredService<IBlackFridaySimuleringQuery>();
-
-    // Warm-up så JIT og EF Core ikke forurener første måling.
-    _ = await sekventiel.Udfør(simuleretDato);
-
-    var sw = Stopwatch.StartNew();
-    var sekventieltResultat = await sekventiel.Udfør(simuleretDato);
-    sw.Stop();
-    Console.WriteLine($"Sekventiel: {sw.ElapsedMilliseconds:N0} ms");
-
-    sw.Restart();
-    var parallelResultat = await parallel.Udfør(simuleretDato);
-    sw.Stop();
-    Console.WriteLine($"Parallel:    {sw.ElapsedMilliseconds:N0} ms");
-
-    Console.WriteLine();
-    Console.WriteLine($"Bookings:    {parallelResultat.AntalBookinger:N0}");
-    Console.WriteLine($"Med rabat:   {parallelResultat.AntalMedRabat:N0}");
-    Console.WriteLine($"Samlet rabat:{parallelResultat.SamletRabat:N0} kr.");
-
-    if (sekventieltResultat.SamletRabat != parallelResultat.SamletRabat
-        || sekventieltResultat.AntalBookinger != parallelResultat.AntalBookinger
-        || sekventieltResultat.AntalMedRabat != parallelResultat.AntalMedRabat)
-    {
-        Console.WriteLine();
-        Console.WriteLine("⚠ INKONSISTENS: parallel og sekventiel returnerede forskelligt resultat!");
-    }
-}
-
-static DateTime NæsteBlackFriday()
-{
-    var iDag = DateTime.Today;
-    var år = iDag.Year;
-    var bf = BlackFridayIÅr(år);
-    if (bf < iDag) bf = BlackFridayIÅr(år + 1);
-    return bf;
-}
-
-static DateTime BlackFridayIÅr(int år)
-{
-    var nov1 = new DateTime(år, 11, 1);
-    var dageTilFørsteFredag = ((int)DayOfWeek.Friday - (int)nov1.DayOfWeek + 7) % 7;
-    return nov1.AddDays(dageTilFørsteFredag + 21);   // 4. fredag i november
-}
 

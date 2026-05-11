@@ -31,13 +31,4 @@ public interface IBehandlerReader
     Task<IReadOnlyList<BehandlerDto>> HentAlleAsync();
 }
 
-// Black Friday-simulering (kap. 23 — read-projection).
-// "Query" beholdes for enkelt-action computational handlers (CQRS-stil),
-// hvor en "Reader" er en repository-lignende klasse med flere read-metoder.
-// Returnerer en hypotetisk rapport for hvad rabatterne ville være hvis
-// "simuleretDato" var den dag bookingerne blev oprettet. Aggregaterne
-// muteres aldrig (jf. kap. 18 §18.3.5 + kap. 23 §23.3.1).
-public interface IBlackFridaySimuleringQuery
-{
-    Task<BlackFridayRapportDto> Udfør(DateTime simuleretDato);
-}
+
